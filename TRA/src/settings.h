@@ -7,14 +7,13 @@ const float BarPressure = 1018.1;
 double Px = 0.5;
 double Ix = 0.2;
 double Dx = 0.1;
- 
+
 double integralCounter = 0;
- 
+
 unsigned lastUpdateTime = -1;
 double lastUpdateError = -1.0;
 
 double targetAngle = 0.0;
-
 
 // Servo Variables
 
@@ -120,6 +119,6 @@ int pyro3Fire = 0;
 int pyro4Fire = 0;
 
 //  Mass Values
-double initialMass = 0; 
+double initialMass = 0;
 
 #define batPin A3 // Change to battery pin later

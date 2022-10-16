@@ -12,7 +12,6 @@
 #include <RH_ASK.h>
 using namespace std;
 
-
 // Compiling all together
 #include <settings.h>
 #include <startup.h>
@@ -52,14 +51,14 @@ int getState()
 
     // Check for unusual state
 
-    if (currentState == 43) {
+    if (currentState == 43)
+    {
         Serial.println("Aborting flight");
         Serial.print("Current state: ");
         Serial.println(currentState);
         abortFunc();
         return currentState;
     }
-
 
     if (currentState == 2)
     {

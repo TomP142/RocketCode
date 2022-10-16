@@ -23,23 +23,23 @@ void mainStartUp()
     Yaxis.attach(4);
     Xaxis.write(0);
     Yaxis.write(0);
-
 }
 
-RH_ASK getDriver() {
+RH_ASK getDriver()
+{
     return driver;
 }
 
-void radioStartup() 
+void radioStartup()
 {
     Serial.println("Starting up Radio connection");
     RH_ASK driver(transmitSpeed, rxPin, txPin, 0);
     if (!driver.init())
-    #ifdef RH_HAVE_SERIAL
-            Serial.println("RF init failed");
-    #else
-            ;
-    #endif
+#ifdef RH_HAVE_SERIAL
+        Serial.println("RF init failed");
+#else
+        ;
+#endif
 }
 
 // Calibration
