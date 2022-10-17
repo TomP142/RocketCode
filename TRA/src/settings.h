@@ -15,6 +15,8 @@ double lastUpdateError = -1.0;
 
 double targetAngle = 0.0;
 
+unsigned int defaultValue = -1;
+
 // Servo Variables
 
 PWMServo Xaxis;
@@ -107,7 +109,7 @@ unsigned long engineOffMillisWaitTime = 3600000;
 unsigned long apogeeMillisWaitTime = 3600000;
 unsigned long landedMillisWaitTime = 3600000;
 
-// Safe Checks
+// Safe Checks - 1 = true, 0 = false
 int tvcStatus = 0;
 int abortStatus = 0;
 int switchStatus = 0;
@@ -119,6 +121,16 @@ int pyro3Fire = 0;
 int pyro4Fire = 0;
 
 //  Mass Values
-double initialMass = 0;
+double initialMass = 0; // in kg
 
+// Battery Values
+
+double Vbatt;
+double Vbatt_perc;
+double V_R2;
+double VbattMax = 4.3;
+double VbattMin = 2.7;
+double resolutionVoltage = 0.00107422; // resolution = AREF / 1024 = 1.1V / 1024
+double R1 = 20000;
+double R2 = 100000;
 #define batPin A3 // Change to battery pin later

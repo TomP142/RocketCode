@@ -124,7 +124,7 @@ void sendRadioMessage()
     {
         messageStatus++;
 
-        char *msg;
+        char *msg = translateChar(float(timeFromTakeOff));
         strcat(msg, XaxisTVC);
         strcat(msg, ZaxisTVC);
         strcat(msg, accelerationX);
@@ -133,14 +133,14 @@ void sendRadioMessage()
         strcat(msg, currentAlt);
         strcat(msg, velocity);
         strcat(msg, translateChar(float(messageStatus)));
-        strcat(msg, translateChar(float(timeFromTakeOff)));
+
         driver.send((uint8_t *)msg, strlen(msg));
         driver.waitPacketSent();
     }
     else if (messageStatus == 1)
     {
         messageStatus++;
-        char *msg;
+        char *msg = translateChar(float(timeFromTakeOff));
         strcat(msg, currentAngleX);
         strcat(msg, currentAngleY);
         strcat(msg, currentAngleZ);
@@ -148,14 +148,14 @@ void sendRadioMessage()
         strcat(msg, gyroY);
         strcat(msg, gyroZ);
         strcat(msg, translateChar(float(messageStatus)));
-        strcat(msg, translateChar(float(timeFromTakeOff)));
+
         driver.send((uint8_t *)msg, strlen(msg));
         driver.waitPacketSent();
     }
     else if (messageStatus == 2)
     {
         // Add data to the msg
-        char *msg;
+        char *msg = translateChar(float(timeFromTakeOff));
         strcat(msg, XaxisTVC);
         strcat(msg, tvcState);
         strcat(msg, abortState);
@@ -165,7 +165,6 @@ void sendRadioMessage()
         strcat(msg, translateChar(float(pyro3State)));
         strcat(msg, translateChar(float(pyro4State)));
         strcat(msg, translateChar(float(messageStatus)));
-        strcat(msg, translateChar(float(timeFromTakeOff)));
 
         // send message
         driver.send((uint8_t *)msg, strlen(msg));
@@ -194,9 +193,8 @@ double handlePID(double currentState, double targetState)
     double currentUpdateError = targetState - currentState;
 
     // Safe Division
-    long deltaTime = lastUpdateTime == -1 ? 0 : millis() - lastUpdateTime;
+    long deltaTime = lastUpdateTime == defaultValue ? 0 : millis() - lastUpdateTime;
     double changeInError = lastUpdateError == -1 ? 0 : currentUpdateError - lastUpdateError;
-    ;
 
     // Calculate PID Terms
     double proportion = currentUpdateError * Px;
@@ -207,11 +205,7 @@ double handlePID(double currentState, double targetState)
     lastUpdateTime = millis();
     lastUpdateError = currentUpdateError;
 
-    // Sum Values
-    double sum = 0;
-    sum = proportion + integralCounter + derivative; // Add PID together
-
-    return sum + 90; // return + add correct servo angle
+    return proportion + integralCounter + derivative + 90; // add PID together + add correct servo angle
 }
 
 // Thrust Vector Control
@@ -381,15 +375,6 @@ void allPyrosLow()
     digitalWrite(Pyro3, LOW);
     digitalWrite(Pyro4, LOW);
 }
-
-double Vbatt;
-double Vbatt_perc;
-double V_R2;
-double VbattMax = 4.3;
-double VbattMin = 2.7;
-double resolutionVoltage = 0.00107422; // resolution = AREF / 1024 = 1.1V / 1024
-double R1 = 20000;
-double R2 = 100000;
 
 void batSetup()
 {
