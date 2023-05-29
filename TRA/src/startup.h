@@ -25,6 +25,20 @@ void mainStartUp()
     Yaxis.write(0);
 }
 
+void flashChipSetup()
+{
+    if (!flash.initialize())
+    {
+        flash.chipErase();
+        while (flash.busy())
+        {
+            delay(100);
+        }
+
+        Serial.println("Flash memory initialization failed");
+    }
+}
+
 RH_ASK getDriver()
 {
     return driver;
@@ -213,7 +227,7 @@ void sensorTesting()
     Wire.beginTransmission(MPU_addr);
     Wire.write(0x3B);
     Wire.endTransmission(false);
-    Wire.requestFrom(MPU_addr, 14, true);
+    Wire.requestFrom((uint8_t)MPU_addr, (uint8_t)14, true);
     AcX = Wire.read() << 8 | Wire.read();
     AcY = Wire.read() << 8 | Wire.read();
     AcZ = Wire.read() << 8 | Wire.read();
@@ -287,11 +301,8 @@ void pyroSetup()
     Serial.println("All pyros completed!");
 }
 
-// SD Card
-
 void sdCardInit()
 {
-    File TVC;
     const int chipSelect = 0;
     Serial.println("Initializing SD card...");
 
@@ -311,6 +322,10 @@ void sdCardInit()
         digitalWrite(B_LED, HIGH);
         delay(300);
     }
+}
+
+void startUpFinished()
+{
     Serial.println("Startup complete!");
     currentState++;
     Serial.print("Current State changed to: ");

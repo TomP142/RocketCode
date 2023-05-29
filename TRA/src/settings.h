@@ -3,6 +3,14 @@ int ttime = millis();
 // BMP280 current barometric pressure
 const float BarPressure = 1018.1;
 
+// Flash chip
+
+#define FLASH_CHIPSELECT 4        // adjust this to your CS pin!
+#define FLASH_MEMORY_SIZE 8388608 // for W25Q64FVSSIQ which has 64Mbit = 8MBytes of storage
+SPIFlash flash(FLASH_CHIPSELECT);
+
+uint32_t currentAddress = 0;
+
 // PID Values
 double Px = 0.5;
 double Ix = 0.2;
@@ -13,10 +21,17 @@ double integralCounter = 0;
 unsigned lastUpdateTime = -1;
 double lastUpdateError = -1.0;
 
-double targetAngle = 0.0;
-
 unsigned int defaultValue = -1;
 
+// Trajectory table
+
+const int MAX_STEPS = 4;
+
+unsigned long trajectoryStartTime = 0;
+int currentTrajectoryStep = 0;
+
+double trajectorySteps[MAX_STEPS] = {0, 10, -5, 0};
+double trajectoryTimings[MAX_STEPS] = {0, 1000, 1500, 1900};
 // Servo Variables
 
 PWMServo Xaxis;
@@ -80,11 +95,17 @@ double DefaultZ = 0;
 
 // Variables
 int acceleration = 0;
+int maxTVCAngle = 10;
+int abortAngle = 45;
 
-// SD CARD
-File longDataLog;
-File shortDataLogSD;
-const int chipSelect = 0;
+unsigned long trajectoryTiming = 0;
+
+// SD Card
+SdFat SD;
+SdFile dataFile;
+const size_t TRANSFER_BUFFER_SIZE = 512;
+
+const int chipSelect = 0; // Change to SD card pin
 
 // Something
 double CalibratedAltitude = 0;

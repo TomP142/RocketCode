@@ -23,7 +23,7 @@ void getRotData()
     Wire.beginTransmission(MPU_addr);
     Wire.write(0x3B);
     Wire.endTransmission(false);
-    Wire.requestFrom(MPU_addr, 14, true);
+    Wire.requestFrom((uint8_t)MPU_addr, (uint8_t)14, (uint8_t) true); // Explicitly cast the arguments
     AcX = Wire.read() << 8 | Wire.read();
     AcY = Wire.read() << 8 | Wire.read();
     AcZ = Wire.read() << 8 | Wire.read();
@@ -65,12 +65,16 @@ void fireParachute()
 
 char *translateChar(float val)
 {
-    char sz[20] = {' '};
+    char *sz = (char *)malloc(20 * sizeof(char)); // dynamically allocate memory
+
+    if (sz == NULL)
+    {
+        // malloc failed, handle error
+        return NULL;
+    }
 
     int val_int = (int)val; // compute the integer part of the float
-
     float val_float = (abs(val) - abs(val_int)) * 100000;
-
     int val_fra = (int)val_float;
 
     sprintf(sz, "%d.%d", val_int, val_fra); //
@@ -80,97 +84,50 @@ char *translateChar(float val)
 
 void sendRadioMessage()
 {
-    delay(200);
-
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
-
-    int messageStatus = 0;
 
     RH_ASK driver(transmitSpeed, rxPin, txPin, 0);
 
     unsigned long timeFromTakeOff = millis() - liftOffMillisTime;
 
-    char *XaxisTVC = translateChar(float(CommandX));
-    char *ZaxisTVC = translateChar(float(CommandZ));
+    char *data[] = {
+        translateChar(float(timeFromTakeOff)),
+        translateChar(float(CommandX)),
+        translateChar(float(CommandZ)),
+        translateChar(float(bmp.readAltitude(BarPressure))),
+        translateChar(float(a.acceleration.y * (double)((millis() - liftOffMillisTime) / 1000))),
+        translateChar(float(a.acceleration.x)),
+        translateChar(float(a.acceleration.y)),
+        translateChar(float(a.acceleration.z)),
+        translateChar(float(x)),
+        translateChar(float(y)),
+        translateChar(float(z)),
+        translateChar(float(g.gyro.x)),
+        translateChar(float(g.gyro.y)),
+        translateChar(float(g.gyro.z)),
+        translateChar(float(CommandX)),
+        translateChar(float(tvcStatus)),
+        translateChar(float(abortStatus)),
+        translateChar(float(switchStatus)),
+        translateChar(float(pyro1Fire)),
+        translateChar(float(pyro2Fire)),
+        translateChar(float(pyro3Fire)),
+        translateChar(float(pyro4Fire))};
 
-    char *currentAlt = translateChar(float(bmp.readAltitude(BarPressure)));
-    char *velocity = translateChar(float(a.acceleration.y * (double)((millis() - liftOffMillisTime) / 1000)));
+    char *msg = (char *)malloc(sizeof(char) * 1024); // ensure this size is sufficient
+    strcpy(msg, data[0]);
 
-    char *currentAngleX = translateChar(float(x));
-    char *currentAngleY = translateChar(float(y));
-    char *currentAngleZ = translateChar(float(z));
-
-    char *accelerationX = translateChar(float(a.acceleration.x));
-    char *accelerationY = translateChar(float(a.acceleration.y));
-    char *accelerationZ = translateChar(float(a.acceleration.z));
-
-    char *gyroX = translateChar(float(g.gyro.x));
-    char *gyroY = translateChar(float(g.gyro.y));
-    char *gyroZ = translateChar(float(g.gyro.z));
-
-    char *tvcState = translateChar(float(tvcStatus));
-    char *abortState = translateChar(float(abortStatus));
-    char *switchState = translateChar(float(switchStatus));
-
-    int pyro1State = pyro1Fire;
-    int pyro2State = pyro2Fire;
-    int pyro3State = pyro3Fire;
-    int pyro4State = pyro4Fire;
-
-    // Combine information + change to Char*
-
-    if (messageStatus == 0)
+    for (size_t i = 1; i < sizeof(data) / sizeof(char *); i++)
     {
-        messageStatus++;
-
-        char *msg = translateChar(float(timeFromTakeOff));
-        strcat(msg, XaxisTVC);
-        strcat(msg, ZaxisTVC);
-        strcat(msg, accelerationX);
-        strcat(msg, accelerationY);
-        strcat(msg, accelerationZ);
-        strcat(msg, currentAlt);
-        strcat(msg, velocity);
-        strcat(msg, translateChar(float(messageStatus)));
-
-        driver.send((uint8_t *)msg, strlen(msg));
-        driver.waitPacketSent();
+        strcat(msg, data[i]);
+        free(data[i]);
     }
-    else if (messageStatus == 1)
-    {
-        messageStatus++;
-        char *msg = translateChar(float(timeFromTakeOff));
-        strcat(msg, currentAngleX);
-        strcat(msg, currentAngleY);
-        strcat(msg, currentAngleZ);
-        strcat(msg, gyroX);
-        strcat(msg, gyroY);
-        strcat(msg, gyroZ);
-        strcat(msg, translateChar(float(messageStatus)));
 
-        driver.send((uint8_t *)msg, strlen(msg));
-        driver.waitPacketSent();
-    }
-    else if (messageStatus == 2)
-    {
-        // Add data to the msg
-        char *msg = translateChar(float(timeFromTakeOff));
-        strcat(msg, XaxisTVC);
-        strcat(msg, tvcState);
-        strcat(msg, abortState);
-        strcat(msg, switchState);
-        strcat(msg, translateChar(float(pyro1State)));
-        strcat(msg, translateChar(float(pyro2State)));
-        strcat(msg, translateChar(float(pyro3State)));
-        strcat(msg, translateChar(float(pyro4State)));
-        strcat(msg, translateChar(float(messageStatus)));
+    driver.send((uint8_t *)msg, strlen(msg));
+    driver.waitPacketSent();
 
-        // send message
-        driver.send((uint8_t *)msg, strlen(msg));
-        driver.waitPacketSent();
-        messageStatus = 0;
-    }
+    free(msg);
 }
 
 void abortFunc()
@@ -189,15 +146,14 @@ void abortFunc()
 // PID handler
 double handlePID(double currentState, double targetState)
 {
-
     double currentUpdateError = targetState - currentState;
 
     // Safe Division
-    long deltaTime = lastUpdateTime == defaultValue ? 0 : millis() - lastUpdateTime;
+    long deltaTime = lastUpdateTime == defaultValue ? 1 : (millis() - lastUpdateTime) / 1000.0; // Convert to seconds
     double changeInError = lastUpdateError == -1 ? 0 : currentUpdateError - lastUpdateError;
 
     // Calculate PID Terms
-    double proportion = currentUpdateError * Px;
+    double proportion = currentUpdateError;
     double derivative = changeInError / deltaTime;
     integralCounter += changeInError * deltaTime;
 
@@ -205,61 +161,78 @@ double handlePID(double currentState, double targetState)
     lastUpdateTime = millis();
     lastUpdateError = currentUpdateError;
 
-    return proportion + integralCounter + derivative + 90; // add PID together + add correct servo angle
+    return proportion * Px + integralCounter * Ix + derivative * Dx + 90; // add PID together + add correct servo angle
+}
+// Thrust Vector Control
+// Ensures the command is within the given angle limits
+double constrainCommand(double command, double maxAngle)
+{
+    if (command < 90 - maxAngle)
+    {
+        return 90 - maxAngle;
+    }
+    else if (command > 90 + maxAngle)
+    {
+        return 90 + maxAngle;
+    }
+    return command;
 }
 
-// Thrust Vector Control
+double ascentTargetAngleHandler(int orientation)
+{
+    if (orientation == 0)
+    {
+        if (currentTrajectoryStep == 0)
+        {
+            trajectoryStartTime = millis();
+            currentTrajectoryStep++;
+        }
+        else if (currentTrajectoryStep <= MAX_STEPS)
+        {
+            if (millis() >= trajectoryStartTime + trajectoryTimings[currentTrajectoryStep - 1])
+            {
+                currentTrajectoryStep++;
+            }
+            return trajectorySteps[currentTrajectoryStep - 1];
+        }
+    }
+    if (orientation == 1)
+    {
+        return 0.0;
+    }
+
+    return 0.0;
+}
+
 void TVCfunc()
 {
-    // Data required
-
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
-    // TVC Here
-
-    xRight = (x - DefaultX); // Get 90 degrees as default from 270
+    xRight = (x - DefaultX);
     zRight = (z - DefaultZ);
 
-    if (xRight >= 135 || xRight <= 45 || zRight >= 135 || zRight <= 45)
-    { // Check if we need to abort
+    if (abs(xRight - 90) >= abortAngle || abs(zRight - 90) >= abortAngle)
+    {
         currentState = 43;
         Serial.println("Abort data detected");
-    }
-    /*float PCmdX = xRight * Px;  // Smoother angle change
-    float PCmdZ = zRight * Px;
-    ICmdX = 0; //ICmdX * 0.01 + xRight; Error calculation
-    ICmdZ = 0; //ICmdZ * 0.01 + zRight;
-    double DCmdX = g.gyro.x * Dx; // Rotation
-    double DCmdZ = g.gyro.z * Dx;
-    CommandX = (PCmdX + DCmdX + (ICmdX * Ix)) * 0.1 + 90; // Add everything together for X axis
-    CommandZ = (PCmdZ + DCmdZ + (ICmdZ * Ix)) * 0.1 + 90; // Add everything together for Y axis*/
-
-    // PID update values
-    CommandX = handlePID(xRight, targetAngle);
-    CommandZ = handlePID(zRight, targetAngle);
-
-    if (CommandX < 45) // Threshold 45° for X axis
-    {
-        CommandX = 45;
-    }
-    else if (CommandX > 135) // Threshold 45° for X axis
-    {
-        CommandX = 135;
-    }
-    if (CommandZ < 45) // Threshold 45° for Z axis
-    {
-        CommandZ = 45;
-    }
-    else if (CommandZ > 135) // Threshold 45° for Z axis
-    {
-        CommandZ = 135;
+        return;
     }
 
-    Serial.print("CommandX: "), Serial.print(CommandX), Serial.print(" CommandZ: "), Serial.println(CommandZ); // Print data for debugging
-    // Serial.print("DCmdX: "), Serial.print(DCmdX), Serial.print("ICmdX: "), Serial.println(ICmdX);
-    Xaxis.write(CommandX); // Update servo X
-    Yaxis.write(CommandZ); // Update servo Z
+    CommandX = handlePID(xRight, ascentTargetAngleHandler(0));
+    CommandZ = handlePID(zRight, ascentTargetAngleHandler(1));
+
+    CommandX = constrainCommand(CommandX, maxTVCAngle);
+    CommandZ = constrainCommand(CommandZ, maxTVCAngle);
+
+    Serial.print("CommandX: "), Serial.print(CommandX), Serial.print(" CommandZ: "), Serial.println(CommandZ);
+
+    Xaxis.write(CommandX);
+    Yaxis.write(CommandZ);
+}
+void landingFunc()
+{
+    // landing logic
 }
 
 void ledColor()
@@ -318,56 +291,259 @@ void ledColor()
     }
 }
 
-void slowDataLog()
+/*void slowDataLog()
 {
     // Data required
-
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
-    // SD card
-    longDataLog = SD.open("longDataLog.txt", FILE_WRITE);
-    if (longDataLog)
+    const char *filename = "longDataLog.txt";
+
+    if (SD.exists(filename))
     {
-        longDataLog.print("Millis, "), longDataLog.print(millis()), longDataLog.print(", Time from Lift off, "), longDataLog.print(millis() - liftOffMillisTime), longDataLog.print(" , TVC X axis, "), longDataLog.print(CommandX), longDataLog.print(" , TVC Y axis:, "), longDataLog.print(CommandZ);
-        longDataLog.print(", Calibrated Altitude, "), longDataLog.print(CalibratedAltitude), longDataLog.print(" ,Current Altitude, "), longDataLog.print(bmp.readAltitude(BarPressure)), longDataLog.print(", AngleX , "), longDataLog.print(x), longDataLog.print(" , AngleY , "), longDataLog.print(y), longDataLog.print(" ,AngleZ , "), longDataLog.print(z), longDataLog.print(", Gyro and IMU readings, "), longDataLog.print(" Acceleration X, "), longDataLog.print(a.acceleration.x), longDataLog.print(", Y, "), longDataLog.print(a.acceleration.y), longDataLog.print(", Z, "), longDataLog.print(a.acceleration.z), longDataLog.print(" , Rotation X, "), longDataLog.print(g.gyro.x), longDataLog.print(", Y, "), longDataLog.print(g.gyro.y), longDataLog.print(", Z, "), longDataLog.print(g.gyro.z), longDataLog.print("");
-        longDataLog.print(", Current State, "), longDataLog.print(currentState), longDataLog.print(", TVC X axis converted, "), longDataLog.print(CommandX - DefaultX), longDataLog.print(", TVC Y axis converted, "), longDataLog.print(CommandZ - DefaultZ), longDataLog.print(", X axis servo angle, "), longDataLog.print(Xaxis.read()), longDataLog.print(", Y axis servo angle, "), longDataLog.print(Yaxis.read()), longDataLog.print(", Velocity, "), longDataLog.print(a.acceleration.y * (double)((millis() - liftOffMillisTime) / 1000));
-        longDataLog.print(", tvcStatus, "), longDataLog.print(tvcStatus), longDataLog.print(", abortStatus, "), longDataLog.print(abortStatus), longDataLog.print(", switchStatus, "), longDataLog.print(switchStatus), longDataLog.print(", pyro1Fire, "), longDataLog.print(pyro1Fire), longDataLog.print(", pyro2Fire, "), longDataLog.print(pyro2Fire), longDataLog.print(", pyro3Fire, "), longDataLog.print(pyro3Fire), longDataLog.print(", pyro4Fire, "), longDataLog.println(pyro4Fire), longDataLog.println(", DefaultX, "), longDataLog.print(DefaultX), longDataLog.println(", DefaultY, "), longDataLog.print(DefaultY), longDataLog.println(", DefaultZ, "), longDataLog.println(DefaultZ);
+        longDataLog.open(filename, O_RDWR | O_APPEND);
+    }
+    else
+    {
+        longDataLog.open(filename, O_CREAT | O_RDWR | O_APPEND);
+    }
+
+    if (longDataLog.isOpen())
+    {
+        longDataLog.print("Millis, ");
+        longDataLog.print(millis());
+        longDataLog.print(", Time from Lift off, ");
+        longDataLog.print(millis() - liftOffMillisTime);
+        longDataLog.print(" , TVC X axis, ");
+        longDataLog.print(CommandX);
+        longDataLog.print(" , TVC Y axis, ");
+        longDataLog.print(CommandZ);
+        longDataLog.print(", Calibrated Altitude, ");
+        longDataLog.print(CalibratedAltitude);
+        longDataLog.print(" ,Current Altitude, ");
+        longDataLog.print(bmp.readAltitude(BarPressure));
+        longDataLog.print(", AngleX , ");
+        longDataLog.print(x);
+        longDataLog.print(" , AngleY , ");
+        longDataLog.print(y);
+        longDataLog.print(" ,AngleZ , ");
+        longDataLog.print(z);
+        longDataLog.print(", Gyro and IMU readings, ");
+        longDataLog.print(" Acceleration X, ");
+        longDataLog.print(a.acceleration.x);
+        longDataLog.print(", Y, ");
+        longDataLog.print(a.acceleration.y);
+        longDataLog.print(", Z, ");
+        longDataLog.print(a.acceleration.z);
+        longDataLog.print(" , Rotation X, ");
+        longDataLog.print(g.gyro.x);
+        longDataLog.print(", Y, ");
+        longDataLog.print(g.gyro.y);
+        longDataLog.print(", Z, ");
+        longDataLog.print(g.gyro.z);
+        longDataLog.print("");
+        longDataLog.print(", Current State, ");
+        longDataLog.print(currentState);
+        longDataLog.print(", TVC X axis converted, ");
+        longDataLog.print(CommandX - DefaultX);
+        longDataLog.print(", TVC Y axis converted, ");
+        longDataLog.print(CommandZ - DefaultZ);
+        longDataLog.print(", X axis servo angle, ");
+        longDataLog.print(Xaxis.read());
+        longDataLog.print(", Y axis servo angle, ");
+        longDataLog.print(Yaxis.read());
+        longDataLog.print(", Velocity, ");
+        longDataLog.print(a.acceleration.y * (double)((millis() - liftOffMillisTime) / 1000));
+        longDataLog.print(", tvcStatus, ");
+        longDataLog.print(tvcStatus);
+        longDataLog.print(", abortStatus, ");
+        longDataLog.print(abortStatus);
+        longDataLog.print(", switchStatus, ");
+        longDataLog.print(switchStatus);
+        longDataLog.print(", pyro1Fire, ");
+        longDataLog.print(pyro1Fire);
+        longDataLog.print(", pyro2Fire, ");
+        longDataLog.print(pyro2Fire);
+        longDataLog.print(", pyro3Fire, ");
+        longDataLog.print(pyro3Fire);
+        longDataLog.print(", pyro4Fire, ");
+        longDataLog.println(pyro4Fire);
+        longDataLog.println(", DefaultX, ");
+        longDataLog.print(DefaultX);
+        longDataLog.println(", DefaultY, ");
+        longDataLog.print(DefaultY);
+        longDataLog.println(", DefaultZ, ");
+        longDataLog.println(DefaultZ);
+
         // close the file:
         longDataLog.close();
     }
     else
     {
         // if the file didn't open, print an error:
-        // Serial.println("error opening TVC.txt");
+        Serial.println("Error opening longDataLog.txt");
+    }
+}*/
+
+void transferDataFromFlashToSD()
+{
+    // Check if there is any data stored in flash memory
+    if (currentAddress > 0)
+    {
+        const char *filename = "longDataLog.txt";
+
+        // Open the SD card file in append mode
+
+        if (SD.exists(filename))
+        {
+            dataFile.open(filename, O_RDWR | O_APPEND);
+        }
+        else
+        {
+            dataFile.open(filename, O_CREAT | O_RDWR | O_APPEND);
+        }
+
+        if (dataFile.isOpen())
+        {
+            // Read the data from flash memory and transfer it to the SD card
+            byte dataBuffer[TRANSFER_BUFFER_SIZE];
+            int bytesRead = 0;
+            unsigned int totalBytesRead = 0;
+
+            while (totalBytesRead < static_cast<unsigned int>(currentAddress))
+            {
+                // Calculate the number of bytes to read in this iteration
+                unsigned int remainingBytes = static_cast<unsigned int>(currentAddress) - totalBytesRead;
+                int bytesToRead = min(static_cast<int>(remainingBytes), TRANSFER_BUFFER_SIZE);
+
+                // Read the data from flash memory
+                flash.readBytes(totalBytesRead, dataBuffer, bytesToRead);
+
+                // Write the data to the SD card
+                dataFile.write(dataBuffer, bytesToRead);
+
+                // Update the counters
+                bytesRead = bytesToRead;
+                totalBytesRead += bytesRead;
+            }
+
+            // Close the SD card file
+            dataFile.close();
+        }
+        else
+        {
+            Serial.println("Error opening SD card file for data transfer!");
+        }
+    }
+    else
+    {
+        Serial.println("No data available in flash memory for transfer!");
     }
 }
 
 void shortDataLog()
 {
     // Data required
-
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 
-    // SD card
-    shortDataLogSD = SD.open("shortDataLog.txt", FILE_WRITE);
-    if (shortDataLogSD)
+    // Buffer for the log string
+    String log;
+
+    // Prepare the log string
+    log += "Millis, ";
+    log += millis();
+    log += ", Time from Lift off, ";
+    log += (millis() - liftOffMillisTime);
+    log += " , TVC X axis, ";
+    log += CommandX;
+    log += " , TVC Y axis, ";
+    log += CommandZ;
+    log += ", Calibrated Altitude, ";
+    log += CalibratedAltitude;
+    log += " , Current Altitude, ";
+    log += bmp.readAltitude(BarPressure);
+    log += ", AngleX, ";
+    log += x;
+    log += " , AngleY, ";
+    log += y;
+    log += " , AngleZ, ";
+    log += z;
+    log += ", Acceleration X, ";
+    log += a.acceleration.x;
+    log += ", Y, ";
+    log += a.acceleration.y;
+    log += ", Z, ";
+    log += a.acceleration.z;
+    log += " , Rotation X, ";
+    log += g.gyro.x;
+    log += ", Y, ";
+    log += g.gyro.y;
+    log += ", Z, ";
+    log += g.gyro.z;
+    log += ", Current State, ";
+    log += currentState;
+    log += ", TVC X axis converted, ";
+    log += (CommandX - DefaultX);
+    log += ", TVC Y axis converted, ";
+    log += (CommandZ - DefaultZ);
+    log += ", X axis servo angle, ";
+    log += Xaxis.read();
+    log += ", Y axis servo angle, ";
+    log += Yaxis.read();
+    log += ", Velocity, ";
+    log += (a.acceleration.y * ((double)(millis() - liftOffMillisTime) / 1000));
+    log += ", tvcStatus, ";
+    log += tvcStatus;
+    log += ", abortStatus, ";
+    log += abortStatus;
+    log += ", switchStatus, ";
+    log += switchStatus;
+    log += ", pyro1Fire, ";
+    log += pyro1Fire;
+    log += ", pyro2Fire, ";
+    log += pyro2Fire;
+    log += ", pyro3Fire, ";
+    log += pyro3Fire;
+    log += ", pyro4Fire, ";
+    log += pyro4Fire;
+    log += ", DefaultX, ";
+    log += DefaultX;
+    log += ", DefaultY, ";
+    log += DefaultY;
+    log += ", DefaultZ, ";
+    log += DefaultZ;
+
+    // Convert the log string to a char array
+    int strLen = log.length() + 1;
+    char logArray[strLen];
+    log.toCharArray(logArray, strLen);
+
+    // Check if there is enough memory left for the new log
+    if (currentAddress + strLen <= FLASH_MEMORY_SIZE)
     {
-        shortDataLogSD.print(", Time from Lift off, "), shortDataLogSD.print(millis() - liftOffMillisTime), shortDataLogSD.print(" ,X axis, "), shortDataLogSD.print(CommandX), shortDataLogSD.print(" ,Z axis:, "), shortDataLogSD.print(CommandZ);
-        shortDataLogSD.print(" Current Altitude, "), shortDataLogSD.print(bmp.readAltitude(BarPressure)), shortDataLogSD.print(", AngleX , "), shortDataLogSD.print(x), shortDataLogSD.print(" , AngleY , "), shortDataLogSD.print(y), shortDataLogSD.print(" ,AngleZ , "), shortDataLogSD.print(z), shortDataLogSD.print(", Gyro and IMU readings, "), shortDataLogSD.print(" Acceleration X, "), shortDataLogSD.print(a.acceleration.x), shortDataLogSD.print(", Y, "), shortDataLogSD.print(a.acceleration.y), shortDataLogSD.print(", Z, "), shortDataLogSD.print(a.acceleration.z), shortDataLogSD.print(" , Rotation X, "), shortDataLogSD.print(g.gyro.x), shortDataLogSD.print(", Y, "), shortDataLogSD.print(g.gyro.y), shortDataLogSD.print(", Z, "), shortDataLogSD.print(g.gyro.z), shortDataLogSD.print("");
-        shortDataLogSD.print(", Current State, "), shortDataLogSD.print(currentState), shortDataLogSD.print(", TVC X axis converted, "), shortDataLogSD.print(CommandX - DefaultX), shortDataLogSD.print(", TVC Y axis converted, "), shortDataLogSD.print(CommandZ - DefaultZ), shortDataLogSD.print(", X axis servo angle, "), shortDataLogSD.print(Xaxis.read()), shortDataLogSD.print(", Y axis servo angle, "), shortDataLogSD.print(Yaxis.read()), shortDataLogSD.print(", Velocity, "), shortDataLogSD.print(a.acceleration.y * (double)((millis() - liftOffMillisTime) / 1000));
-        shortDataLogSD.print(", tvcStatus, "), shortDataLogSD.print(tvcStatus), shortDataLogSD.print(", abortStatus, "), shortDataLogSD.print(abortStatus), shortDataLogSD.print(", switchStatus, "), shortDataLogSD.print(switchStatus), shortDataLogSD.print(", pyro1Fire, "), shortDataLogSD.print(pyro1Fire), shortDataLogSD.print(", pyro2Fire, "), shortDataLogSD.print(pyro2Fire), shortDataLogSD.print(", pyro3Fire, "), shortDataLogSD.print(pyro3Fire), shortDataLogSD.print(", pyro4Fire, "), shortDataLogSD.println(pyro4Fire);
-        // close the file:
-        shortDataLogSD.close();
+        // Save the log to flash
+        flash.writeBytes(currentAddress, (byte *)logArray, strLen);
+
+        // Verify written data
+        byte verifyArray[strLen];
+        flash.readBytes(currentAddress, verifyArray, strLen);
+
+        // Compare written data with original data
+        if (memcmp(logArray, verifyArray, strLen) != 0)
+        {
+            Serial.println("Failed to write to flash!");
+        }
+
+        // Move to the next address for the next log
+        currentAddress += strLen;
     }
     else
     {
-        // if the file didn't open, print an error:
-        // Serial.println("error opening shortDataLog.txt");
+        // Handle the case where the flash memory is full
+        Serial.println("Flash memory is full, could not write log!");
     }
 }
-
 void allPyrosLow()
 {
     digitalWrite(Pyro1, LOW);

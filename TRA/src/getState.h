@@ -1,8 +1,8 @@
 // Libraries
 #include <Wire.h>
 #include <PWMServo.h>
-#include <SD.h>
 #include <SPI.h>
+#include <SdFat.h>
 #include <Adafruit_BMP280.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -10,6 +10,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <RH_ASK.h>
+#include <SPIFlash.h>
 using namespace std;
 
 // Compiling all together
@@ -60,36 +61,33 @@ int getState()
         return currentState;
     }
 
+    // Check for liftoff
     if (currentState == 2)
     {
-        { // Check if we didn't take off
-            if (a.acceleration.y > 0)
-            { // If we have enough acceleration for liftoff
-                if (currentMillisTime >= liftOffMillisWaitTime)
-                { // Check if we are accelerating for longer period of time
-                    currentState++;
-                    Serial.println("Lift off!");
-                    liftOffMillisTime = millis();
-                    Serial.print("Calibrated Altitude: ");
-                    Serial.println(CalibratedAltitude);
-                    Serial.print("Current State changed to: ");
-                    Serial.println(currentState);
-                    return currentState;
-                }
-                else if (liftOffMillisWaitTime == 0)
-                {
-                    liftOffMillisWaitTime = currentMillisTime + 300; // Set how much time the rocket must accelerate to sense lift off.
-                }
-            }
-            else
+        if (a.acceleration.y > 0)
+        {
+            if (currentMillisTime >= liftOffMillisWaitTime)
             {
-                liftOffMillisWaitTime = 0; // Reset timer if acceleration lower than expected
+                currentState++;
+                Serial.println("Lift off!");
+                liftOffMillisTime = millis();
+                Serial.print("Calibrated Altitude: ");
+                Serial.println(CalibratedAltitude);
+                Serial.print("Current State changed to: ");
+                Serial.println(currentState);
             }
+            else if (liftOffMillisWaitTime == 0)
+            {
+                liftOffMillisWaitTime = currentMillisTime + 300;
+            }
+        }
+        else
+        {
+            liftOffMillisWaitTime = 0;
         }
     }
 
-    // Take off phase detected
-
+    // Check for ascent
     if (currentState == 3)
     {
         if (a.acceleration.y > -2)
@@ -100,17 +98,15 @@ int getState()
                 Serial.println("Detected ascent/engine on phase! Starting TVC.");
                 Serial.print("Current State changed to: ");
                 Serial.println(currentState);
-                return currentState;
             }
         }
     }
-    // Engine Off phase
 
+    // Check for engine off
     if (currentState == 4)
     {
         if (currentMillisTime >= engineOffMillisWaitTime)
         {
-
             acc2 = a.acceleration.y;
             if (acc1 > acc2)
             {
@@ -118,9 +114,8 @@ int getState()
                 Serial.println("Engine Off phase detected. Losing acceleration.");
                 Serial.print("Current State changed to: ");
                 Serial.println(currentState);
-                return currentState;
             }
-            else // Acceleration is still increasing. Reset everything
+            else
             {
                 acc1 = 0;
                 acc2 = 0;
@@ -134,7 +129,7 @@ int getState()
         }
     }
 
-    // Uncontrolled descend phase
+    // Check for uncontrolled descent
     if (currentState == 5)
     {
         if (currentMillisTime >= apogeeMillisWaitTime)
@@ -151,7 +146,6 @@ int getState()
                 Serial.println("m ASL");
                 Serial.print("Current State changed to: ");
                 Serial.println(currentState);
-                return currentState;
             }
             else
             {
@@ -167,20 +161,19 @@ int getState()
         }
     }
 
-    // Parachute deployment phase
-
+    // Check if equation = currentTime then start second engine
     if (currentState == 6)
     {
         if (bmp.readAltitude(BarPressure) <= CalibratedAltitude + ParachutesDeployAltitude)
         {
             currentState++;
-            Serial.println("Parachutes deployment!");
+            Serial.println("Lighting second engine!");
             Serial.print("Current State changed to: ");
             Serial.println(currentState);
-            return currentState;
         }
     }
 
+    // Check for landing
     if (currentState == 7)
     {
         if (currentMillisTime >= landedMillisWaitTime)
@@ -193,7 +186,6 @@ int getState()
                 Serial.println("s after Lift off!");
                 Serial.print("Current State changed to: ");
                 Serial.println(currentState);
-                return currentState;
             }
             else
             {
@@ -207,5 +199,6 @@ int getState()
             landedMillisWaitTime = currentMillisTime + 5000;
         }
     }
-    return 0;
+
+    return currentState;
 }

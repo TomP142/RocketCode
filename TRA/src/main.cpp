@@ -11,6 +11,8 @@ void setup()
   pyroSetup(); // DO NOT TURN ON FOR LAUNCH COMMENT OUT !!!!!
   sdCardInit();
   radioStartup();
+  flashChipSetup();
+  startUpFinished();
 }
 
 void loop()
@@ -26,15 +28,16 @@ void loop()
   {
     getRotData();
     allPyrosLow();
-    //batVoltage();
-    //slowDataLog();
+    shortDataLog();
+    // batVoltage();
+    // slowDataLog();
   }
 
   if (currentState == 3) // Lift off
   {
     getRotData();
     TVCfunc();
-    slowDataLog();
+    shortDataLog();
   }
 
   if (currentState == 4) // Engine on
@@ -58,16 +61,25 @@ void loop()
     shortDataLog();
   }
 
-  if (currentState == 7) // Parachute deployment
+  //
+  //  if (currentState == 7) // Parachute deployment
+  //  {
+  //    fireParachute();
+  //    getRotData();
+  //    shortDataLog();
+  //  }
+
+  if (currentState == 7)
   {
-    fireParachute();
     getRotData();
     shortDataLog();
+    landingFunc();
   }
 
   if (currentState == 8) // Landed
   {
     // After landing code
+    transferDataFromFlashToSD();
   }
 
   if (currentState == 9) // Data transfer to flash chip
