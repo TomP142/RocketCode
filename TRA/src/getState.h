@@ -42,7 +42,6 @@ int getState()
     // 7 - Parachutes off
     // 8 - Landed - Data Transfer
     // 43 - Abort
-    // 44 -
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
 

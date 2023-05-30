@@ -45,8 +45,8 @@ PWMServo Xaxis;
 PWMServo Yaxis;
 int angle = 0;
 int CalibrationServo = 0;
-int calibration1 = random(180);
-int calibration2 = random(180);
+int calibration1 = random(90);
+int calibration2 = random(135);
 int calibration3 = random(180);
 // Led and buzzer
 int R_LED = 9;
