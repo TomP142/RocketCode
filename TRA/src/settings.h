@@ -124,6 +124,7 @@ int ParachutesDeployAltitude = 30;
 unsigned long liftOffMillisTime = 0;
 unsigned long currentMillisTime = 0;
 unsigned long parachuteFireMillisTime = 0;
+unsigned long deployLegsMillisTime = 0;
 
 unsigned long liftOffMillisWaitTime = 3600000;
 unsigned long engineOffMillisWaitTime = 3600000;
@@ -135,6 +136,7 @@ int tvcStatus = 0;
 int abortStatus = 0;
 int switchStatus = 0;
 int firedParachute = 0;
+int deployedLegs = 0;
 
 int pyro1Fire = 0;
 int pyro2Fire = 0;
@@ -155,3 +157,6 @@ double resolutionVoltage = 0.00107422; // resolution = AREF / 1024 = 1.1V / 1024
 double R1 = 20000;
 double R2 = 100000;
 #define batPin A3 // Change to battery pin later
+
+// Legs
+double legsDeployAltitude = 5;

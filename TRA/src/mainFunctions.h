@@ -233,6 +233,12 @@ void TVCfunc()
 void landingFunc()
 {
     // landing logic
+
+    // close enough to ground to deploy legs
+    if (bmp.readAltitude(BarPressure) <= legsDeployAltitude)
+    {
+        deployLegs();
+    }
 }
 
 void ledColor()
@@ -568,4 +574,25 @@ void batVoltage()
     Serial.print(V_R2);
     Serial.print("\t");
     Serial.println(analogRead(batPin));
+}
+
+void deployLegs()
+{
+    if (deployedLegs == 0)
+    {
+
+        Serial.println("Deploying legs - Pyro 1");
+        pyro1Fire = 1;
+        digitalWrite(Pyro1, HIGH);
+        if (deployLegsMillisTime == 0)
+        {
+            deployLegsMillisTime = millis();
+        }
+        if (deployLegsMillisTime + 1000 >= millis())
+        {
+            digitalWrite(Pyro1, LOW);
+            deployedLegs = 1;
+            pyro1Fire = 0;
+        }
+    }
 }
