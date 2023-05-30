@@ -32,6 +32,14 @@ int currentTrajectoryStep = 0;
 
 double trajectorySteps[MAX_STEPS] = {0, 10, -5, 0};
 double trajectoryTimings[MAX_STEPS] = {0, 1000, 1500, 1900};
+
+// Landing trajectory
+unsigned long landingTrajectoryStartTime = 0;
+int landingCurrentTrajectoryStep = 0;
+
+const int LAND_MAX_STEPS = 4;
+double landingSineAngles[MAX_STEPS] = {0, 5, -5, 0};
+double landingSineTiming[MAX_STEPS] = {0, 500, 1200, 1900};
 // Servo Variables
 
 PWMServo Xaxis;

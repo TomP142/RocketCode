@@ -230,9 +230,62 @@ void TVCfunc()
     Xaxis.write(CommandX);
     Yaxis.write(CommandZ);
 }
+
+// Landing
+
+double landingTargetAngleHandler(int orientation)
+{
+    if (orientation == 0)
+    {
+        if (landingTrajectoryStartTime == 0)
+        {
+            landingCurrentTrajectoryStep = millis();
+            landingTrajectoryStartTime++;
+        }
+        else if (landingTrajectoryStartTime <= MAX_STEPS)
+        {
+            if (millis() >= landingCurrentTrajectoryStep + landingSineTimings[landingTrajectoryStartTime - 1])
+            {
+                landingTrajectoryStartTime++;
+            }
+            return landingSineAngles[landingTrajectoryStartTime - 1];
+        }
+    }
+    if (orientation == 1)
+    {
+        return 0.0;
+    }
+
+    return 0.0;
+}
+
 void landingFunc()
 {
     // landing logic
+
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+
+    xRight = (x - DefaultX);
+    zRight = (z - DefaultZ);
+
+    if (abs(xRight - 90) >= abortAngle || abs(zRight - 90) >= abortAngle)
+    {
+        currentState = 43;
+        Serial.println("Abort data detected");
+        return;
+    }
+
+    CommandX = handlePID(xRight, landingTargetAngleHandler(0));
+    CommandZ = handlePID(zRight, landingTargetAngleHandler(1));
+
+    CommandX = constrainCommand(CommandX, maxTVCAngle);
+    CommandZ = constrainCommand(CommandZ, maxTVCAngle);
+
+    Serial.print("CommandX: "), Serial.print(CommandX), Serial.print(" CommandZ: "), Serial.println(CommandZ);
+
+    Xaxis.write(CommandX);
+    Yaxis.write(CommandZ);
 
     // close enough to ground to deploy legs
     if (bmp.readAltitude(BarPressure) <= legsDeployAltitude)
