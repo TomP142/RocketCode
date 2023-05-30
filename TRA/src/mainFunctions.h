@@ -155,7 +155,7 @@ void abortFunc()
 {
 
     // functions
-    fireParachute();
+    deployLegs();
 
     // Servo manipulation
     CommandX = 90;         // Reset servo
@@ -258,18 +258,18 @@ double landingTargetAngleHandler(int orientation)
 {
     if (orientation == 0)
     {
-        if (landingTrajectoryStartTime == 0)
+        if (landingCurrentTrajectoryStep == 0)
         {
-            landingCurrentTrajectoryStep = millis();
-            landingTrajectoryStartTime++;
+            landingTrajectoryStartTime = millis();
+            landingCurrentTrajectoryStep++;
         }
-        else if (landingTrajectoryStartTime <= MAX_STEPS)
+        else if (landingCurrentTrajectoryStep <= MAX_STEPS)
         {
-            if (millis() >= landingCurrentTrajectoryStep + landingSineTimings[landingTrajectoryStartTime - 1])
+            if (millis() >= landingTrajectoryStartTime + landingSineTimings[landingCurrentTrajectoryStep - 1])
             {
-                landingTrajectoryStartTime++;
+                landingCurrentTrajectoryStep++;
             }
-            return landingSineAngles[landingTrajectoryStartTime - 1];
+            return landingSineAngles[landingCurrentTrajectoryStep - 1];
         }
     }
     if (orientation == 1)

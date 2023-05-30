@@ -78,12 +78,6 @@ void loop()
 
   if (currentState == 8) // Landed
   {
-    // After landing code
     transferDataFromFlashToSD();
-  }
-
-  if (currentState == 9) // Data transfer to flash chip
-  {
-    // Nothing
   }
 }

@@ -27,8 +27,7 @@ using namespace std;
 // 5 - Engine Off
 // 6 - Apogee / Uncontrolled descend
 // 7 - Parachutes off
-// 8 - Landed
-// 9 - Data Transfer ??
+// 8 - Landed - Data Transfer
 
 // WaitTime 2.0
 
@@ -41,9 +40,8 @@ int getState()
     // 5 - Engine Off
     // 6 - Apogee / Uncontrolled descend
     // 7 - Parachutes off
-    // 8 - Landed
-    // 9 - Data Transfer ??
-    // 43 - Abort Landing
+    // 8 - Landed - Data Transfer
+    // 43 - Abort
     // 44 -
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
