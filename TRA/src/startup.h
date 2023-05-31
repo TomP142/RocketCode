@@ -11,7 +11,6 @@ void mainStartUp()
     Wire.write(0);
     Wire.endTransmission(true);
 
-    Serial.begin(9600);
     bmp.begin();
     mpu.begin();
     Serial.println("");
@@ -21,8 +20,8 @@ void mainStartUp()
 
     Xaxis.attach(3);
     Yaxis.attach(4);
-    Xaxis.write(0);
-    Yaxis.write(0);
+    Xaxis.write(90);
+    Yaxis.write(90);
 }
 
 void flashChipSetup()

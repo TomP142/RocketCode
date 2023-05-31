@@ -12,9 +12,9 @@ SPIFlash flash(FLASH_CHIPSELECT);
 uint32_t currentAddress = 0;
 
 // PID Values
-double Px = 0.5;
-double Ix = 0.2;
-double Dx = 0.1;
+double Px = 0.1;
+double Ix = 0.05;
+double Dx = 0.08;
 
 double integralCounter = 0;
 

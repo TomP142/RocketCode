@@ -26,7 +26,7 @@ using namespace std;
 // 4 - Accelerating
 // 5 - Engine Off
 // 6 - Apogee / Uncontrolled descend
-// 7 - Parachutes off
+// 7 - Start landing procedure
 // 8 - Landed - Data Transfer
 
 // WaitTime 2.0
@@ -39,7 +39,7 @@ int getState()
     // 4 - Accelerating
     // 5 - Engine Off
     // 6 - Apogee / Uncontrolled descend
-    // 7 - Parachutes off
+    // 7 - Start landing procedure
     // 8 - Landed - Data Transfer
     // 43 - Abort
     sensors_event_t a, g, temp;
@@ -75,7 +75,7 @@ int getState()
             }
             else if (liftOffMillisWaitTime == 0)
             {
-                liftOffMillisWaitTime = currentMillisTime + 300;
+                liftOffMillisWaitTime = currentMillisTime + 100;
             }
         }
         else

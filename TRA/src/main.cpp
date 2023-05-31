@@ -8,7 +8,7 @@ void setup()
   buzzerLED();
   sensorTesting();
   batSetup();
-  pyroSetup(); // DO NOT TURN ON FOR LAUNCH COMMENT OUT !!!!!
+  // pyroSetup(); // DO NOT TURN ON FOR LAUNCH COMMENT OUT !!!!!
   sdCardInit();
   radioStartup();
   flashChipSetup();
@@ -18,15 +18,17 @@ void setup()
 void loop()
 {
   // Required functions
+  getRotData();
   getState();
   ledColor();
+  sendRadioMessage();
+
   if (currentState == 1) // Not full setup
   {
   }
 
   if (currentState == 2) // Waiting for launch
   {
-    getRotData();
     allPyrosLow();
     shortDataLog();
     // batVoltage();
@@ -35,14 +37,12 @@ void loop()
 
   if (currentState == 3) // Lift off
   {
-    getRotData();
     TVCfunc();
     shortDataLog();
   }
 
   if (currentState == 4) // Engine on
   {
-    getRotData();
     tvcStatus = 1;
     TVCfunc();
     shortDataLog();
@@ -51,13 +51,11 @@ void loop()
   if (currentState == 5) // Engine off
   {
     tvcStatus = 0;
-    getRotData();
     shortDataLog();
   }
 
   if (currentState == 6) // Apogee / Uncontrolled descend
   {
-    getRotData();
     shortDataLog();
   }
 
@@ -71,7 +69,6 @@ void loop()
 
   if (currentState == 7)
   {
-    getRotData();
     shortDataLog();
     landingFunc();
   }
